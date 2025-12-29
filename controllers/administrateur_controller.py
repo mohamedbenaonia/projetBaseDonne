@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template
 from database.db import db
 from models.administrateur import Administrateur
 
@@ -44,3 +44,8 @@ def delete_administrateur(id):
     db.session.delete(a)
     db.session.commit()
     return jsonify({"message": "Administrateur supprimé avec succès"})
+
+# Route (Page HTML)
+@administrateur_bp.route("/page", methods=["GET"])
+def administrateur_page():
+    return render_template("administrateur.html", stylefile="administrateur", titlepage="Administrateurs")
