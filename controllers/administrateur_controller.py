@@ -1,6 +1,5 @@
 from flask import Blueprint, request, jsonify, render_template
-from database.db import db
-from models.administrateur import Administrateur
+from database.db import get_db
 
 administrateur_bp = Blueprint("administrateur_bp", __name__)
 
@@ -8,44 +7,78 @@ administrateur_bp = Blueprint("administrateur_bp", __name__)
 @administrateur_bp.route("/administrateurs", methods=["POST"])
 def create_administrateur():
     data = request.json
-    administrateur = Administrateur(username=data["username"], password=data["password"])
-    db.session.add(administrateur)
-    db.session.commit()
+    db = get_db()
+    db.execute(
+        "INSERT INTO administrateur (username, password) VALUES (?, ?)",
+        (data["username"], data["password"])
+    )
+    db.commit()
     return jsonify({"message": "Administrateur ajouté avec succès"}), 201
+
 
 # READ ALL
 @administrateur_bp.route("/administrateurs", methods=["GET"])
 def get_all_administrateurs():
-    administrateurs = Administrateur.query.all()
-    return jsonify([
-        {"id": a.id, "username": a.username} for a in administrateurs
-    ])
+    db = get_db()
+    rows = db.execute(
+        "SELECT id, username FROM administrateur"
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+
 
 # READ ONE
 @administrateur_bp.route("/administrateurs/<int:id>", methods=["GET"])
 def get_administrateur(id):
-    a = Administrateur.query.get_or_404(id)
-    return jsonify({"id": a.id, "username": a.username})
+    db = get_db()
+    row = db.execute(
+        "SELECT id, username FROM administrateur WHERE id = ?",
+        (id,)
+    ).fetchone()
+
+    if row is None:
+        return jsonify({"error": "Administrateur non trouvé"}), 404
+
+    return jsonify(dict(row))
+
 
 # UPDATE
 @administrateur_bp.route("/administrateurs/<int:id>", methods=["PUT"])
 def update_administrateur(id):
-    a = Administrateur.query.get_or_404(id)
     data = request.json
-    a.username = data["username"]
-    a.password = data["password"]
-    db.session.commit()
+    db = get_db()
+    cursor = db.execute(
+        "UPDATE administrateur SET username = ?, password = ? WHERE id = ?",
+        (data["username"], data["password"], id)
+    )
+    db.commit()
+
+    if cursor.rowcount == 0:
+        return jsonify({"error": "Administrateur non trouvé"}), 404
+
     return jsonify({"message": "Administrateur modifié avec succès"})
+
 
 # DELETE
 @administrateur_bp.route("/administrateurs/<int:id>", methods=["DELETE"])
 def delete_administrateur(id):
-    a = Administrateur.query.get_or_404(id)
-    db.session.delete(a)
-    db.session.commit()
+    db = get_db()
+    cursor = db.execute(
+        "DELETE FROM administrateur WHERE id = ?",
+        (id,)
+    )
+    db.commit()
+
+    if cursor.rowcount == 0:
+        return jsonify({"error": "Administrateur non trouvé"}), 404
+
     return jsonify({"message": "Administrateur supprimé avec succès"})
 
-# Route (Page HTML)
+
+# PAGE HTML
 @administrateur_bp.route("/page", methods=["GET"])
 def administrateur_page():
-    return render_template("administrateur.html", stylefile="administrateur", titlepage="Administrateurs")
+    return render_template(
+        "administrateur.html",
+        stylefile="administrateur",
+        titlepage="Administrateurs"
+    )
