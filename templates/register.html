@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}Inscription - Plateforme Universitaire{% endblock %}
+
+{% block body %}
+<div class="login-container">
+    <div class="login-card" style="max-width: 600px;">
+        <div class="login-header">
+            <h1>🎓 Créer un Compte</h1>
+            <p>Inscrivez-vous sur la plateforme</p>
+        </div>
+        
+        <form id="registerForm" class="login-form">
+            <div class="form-group">
+                <label for="user_type">Je suis :</label>
+                <select id="user_type" name="user_type" required onchange="updateFormFields()">
+                    <option value="">-- Sélectionnez votre rôle --</option>
+                    <option value="etudiant">👨‍🎓 Étudiant</option>
+                    <option value="professeur">👨‍🏫 Professeur</option>
+                    <option value="administrateur">👤 Administrateur</option>
+                </select>
+            </div>
+            
+            <div id="commonFields">
+                <div class="form-group" id="nomGroup">
+                    <label for="nom">Nom :</label>
+                    <input type="text" id="nom" name="nom" placeholder="Votre nom">
+                </div>
+                
+                <div class="form-group" id="prenomGroup">
+                    <label for="prenom">Prénom :</label>
+                    <input type="text" id="prenom" name="prenom" placeholder="Votre prénom">
+                </div>
+                
+                <div class="form-group" id="emailGroup">
+                    <label for="email">Email :</label>
+                    <input type="email" id="email" name="email" required placeholder="votre@email.com">
+                </div>
+                
+                <div class="form-group" id="filiereGroup" style="display: none;">
+                    <label for="filiere_id">Filière :</label>
+                    <select id="filiere_id" name="filiere_id">
+                        <option value="">-- Sélectionnez une filière --</option>
+                        {% if filieres %}
+                            {% for filiere in filieres %}
+                            <option value="{{ filiere.id }}">{{ filiere.nom }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>Aucune filière disponible</option>
+                        {% endif %}
+                    </select>
+                    <small style="color: var(--text-secondary); font-size: 0.85rem;">
+                        {% if not filieres %}
+                            <span style="color: var(--warning-color);">⚠️ Aucune filière disponible. Contactez un administrateur pour créer une filière.</span>
+                        {% else %}
+                            Si votre filière n'existe pas, contactez un administrateur.
+                        {% endif %}
+                    </small>
+                </div>
+                
+                <div class="form-group" id="usernameGroup" style="display: none;">
+                    <label for="username">Nom d'utilisateur :</label>
+                    <input type="text" id="username" name="username" required placeholder="nom_utilisateur">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mot de passe :</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••" minlength="6">
+                <small style="color: var(--text-secondary); font-size: 0.85rem;">
+                    Minimum 6 caractères
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirmer le mot de passe :</label>
+                <input type="password" id="confirm_password" name="confirm_password" required placeholder="••••••••">
+            </div>
+            
+            <button type="submit" class="btn-primary" id="submitBtn">Créer mon compte</button>
+            <div id="loadingSpinner" class="spinner" style="display: none; margin: 20px auto;"></div>
+        </form>
+        
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        <div id="successMessage" class="alert alert-success" style="display: none;"></div>
+        
+        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <p style="color: var(--text-secondary);">Vous avez déjà un compte ?</p>
+            <a href="/auth/login" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Se connecter</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateFormFields() {
+    const userType = document.getElementById('user_type').value;
+    const filiereGroup = document.getElementById('filiereGroup');
+    const usernameGroup = document.getElementById('usernameGroup');
+    const emailGroup = document.getElementById('emailGroup');
+    const nomField = document.getElementById('nom');
+    const prenomField = document.getElementById('prenom');
+    const filiereSelect = document.getElementById('filiere_id');
+    const usernameField = document.getElementById('username');
+    
+    // Réinitialiser
+    filiereGroup.style.display = 'none';
+    usernameGroup.style.display = 'none';
+    emailGroup.style.display = 'block';
+    nomField.required = true;
+    prenomField.required = true;
+    filiereSelect.required = false;
+    usernameField.required = false;
+    
+    // Réinitialiser les valeurs
+    nomField.value = '';
+    prenomField.value = '';
+    usernameField.value = '';
+    
+    if (userType === 'etudiant' || userType === 'professeur') {
+        filiereGroup.style.display = 'block';
+        filiereSelect.required = true;
+        emailGroup.style.display = 'block';
+        usernameGroup.style.display = 'none';
+    } else if (userType === 'administrateur') {
+        usernameGroup.style.display = 'block';
+        usernameField.required = true;
+        emailGroup.style.display = 'none';
+        filiereGroup.style.display = 'none';
+        nomField.required = false;
+        prenomField.required = false;
+        // Masquer les champs nom et prénom visuellement
+        document.getElementById('nomGroup').style.display = 'none';
+        document.getElementById('prenomGroup').style.display = 'none';
+    } else {
+        // Afficher tous les champs par défaut
+        document.getElementById('nomGroup').style.display = 'block';
+        document.getElementById('prenomGroup').style.display = 'block';
+    }
+}
+
+const form = document.getElementById("registerForm");
+const errorMessage = document.getElementById("errorMessage");
+const successMessage = document.getElementById("successMessage");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMessage.style.display = "none";
+    successMessage.style.display = "none";
+    
+    const submitBtn = document.getElementById("submitBtn");
+    const loadingSpinner = document.getElementById("loadingSpinner");
+    
+    // Désactiver le bouton et afficher le spinner
+    submitBtn.disabled = true;
+    loadingSpinner.style.display = "block";
+    
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirm_password").value;
+    
+    if (password !== confirmPassword) {
+        errorMessage.textContent = "Les mots de passe ne correspondent pas";
+        errorMessage.style.display = "block";
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = "none";
+        return;
+    }
+    
+    if (password.length < 6) {
+        errorMessage.textContent = "Le mot de passe doit contenir au moins 6 caractères";
+        errorMessage.style.display = "block";
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = "none";
+        return;
+    }
+    
+    const userType = document.getElementById("user_type").value;
+    const formData = {
+        user_type: userType,
+        password: password
+    };
+    
+    if (userType === "administrateur") {
+        formData.username = document.getElementById("username").value;
+        if (!formData.username) {
+            errorMessage.textContent = "Le nom d'utilisateur est requis";
+            errorMessage.style.display = "block";
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            return;
+        }
+    } else {
+        formData.nom = document.getElementById("nom").value;
+        formData.prenom = document.getElementById("prenom").value;
+        formData.email = document.getElementById("email").value;
+        formData.filiere_id = document.getElementById("filiere_id").value;
+        
+        if (!formData.nom || !formData.prenom || !formData.email) {
+            errorMessage.textContent = "Tous les champs sont requis";
+            errorMessage.style.display = "block";
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            return;
+        }
+        
+        if (!formData.filiere_id) {
+            const filiereSelect = document.getElementById('filiere_id');
+            const hasFilieres = filiereSelect.options.length > 1;
+            if (!hasFilieres) {
+                errorMessage.textContent = "Aucune filière disponible. Veuillez contacter un administrateur.";
+            } else {
+                errorMessage.textContent = "Veuillez sélectionner une filière";
+            }
+            errorMessage.style.display = "block";
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            return;
+        }
+    }
+    
+    try {
+        const response = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        });
+        
+        let data;
+        try {
+            const text = await response.text();
+            console.log("Réponse serveur (texte):", text);
+            data = JSON.parse(text);
+        } catch (e) {
+            errorMessage.textContent = "Erreur: Réponse invalide du serveur. Vérifiez la console pour plus de détails.";
+            errorMessage.style.display = "block";
+            console.error("Erreur parsing JSON:", e);
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            return;
+        }
+        
+        if (response.ok && data.success) {
+            successMessage.textContent = data.message || "Compte créé avec succès !";
+            successMessage.style.display = "block";
+            form.reset();
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            setTimeout(() => {
+                window.location.href = data.redirect || "/auth/login";
+            }, 2000);
+        } else {
+            errorMessage.textContent = data.error || "Erreur lors de la création du compte";
+            errorMessage.style.display = "block";
+            submitBtn.disabled = false;
+            loadingSpinner.style.display = "none";
+            console.error("Erreur serveur:", data);
+        }
+    } catch (error) {
+        errorMessage.textContent = "Erreur de connexion au serveur: " + error.message;
+        errorMessage.style.display = "block";
+        submitBtn.disabled = false;
+        loadingSpinner.style.display = "none";
+        console.error("Erreur réseau:", error);
+    }
+});
+</script>
+{% endblock %}
+

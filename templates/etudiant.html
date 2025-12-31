@@ -1,16 +1,50 @@
 {% extends 'base.html' %}
 
 {% block body %}
-    <header>
-        <h1>{{ titlepage }}</h1>
-        <nav>
-            <a href="/">Accueil</a>
-            <a href="/etudiant">Étudiant</a>
-            <a href="/professeur">Professeur</a>
-        </nav>
-    </header>
-    <main>
-        <h2>Page Étudiant</h2>
-        <p>Liste des étudiants et informations.</p>
-    </main>
+<h1>Étudiants</h1>
+<form id="etudiantForm">
+    <input type="text" id="nom" placeholder="Nom" required>
+    <input type="text" id="prenom" placeholder="Prénom" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <button type="submit">Ajouter</button>
+</form>
+
+<h2>Liste des étudiants</h2>
+<ul id="etudiantList"></ul>
+
+<script>
+const form = document.getElementById("etudiantForm");
+const etudiantList = document.getElementById("etudiantList");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nom = document.getElementById("nom").value;
+    const prenom = document.getElementById("prenom").value;
+    const email = document.getElementById("email").value;
+
+    const response = await fetch("/etudiant/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nom, prenom, email })
+    });
+
+    if(response.ok) {
+        alert("Étudiant ajouté !");
+        loadEtudiants();
+    }
+});
+
+async function loadEtudiants() {
+    const response = await fetch("/etudiant/");
+    const etudiants = await response.json();
+    etudiantList.innerHTML = "";
+    etudiants.forEach(e => {
+        const li = document.createElement("li");
+        li.textContent = `${e.id} - ${e.nom} ${e.prenom} (${e.email})`;
+        etudiantList.appendChild(li);
+    });
+}
+
+loadEtudiants();
+</script>
 {% endblock %}

@@ -1,0 +1,380 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Professeur - {{ prof.nom }} {{ prof.prenom }}{% endblock %}
+
+{% block body %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <h1>👨‍🏫 Dashboard Professeur</h1>
+            <p>Bienvenue, {{ prof.nom }} {{ prof.prenom }}</p>
+            {% if filiere %}
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">Filière: <strong>{{ filiere.nom }}</strong></p>
+            {% else %}
+            <p style="color: var(--warning-color); font-size: 0.9rem;">⚠️ Aucune filière assignée</p>
+            {% endif %}
+        </div>
+        <div class="user-info">
+            <span>{{ session.user_name }}</span>
+            <a href="/auth/logout" class="btn-logout">Déconnexion</a>
+        </div>
+    </div>
+    
+    {% if total_etudiants == 0 and filiere %}
+    <div class="alert alert-info">
+        <strong>ℹ️ Information :</strong> Aucun étudiant trouvé dans votre filière ({{ filiere.nom }}). 
+        Les étudiants doivent être inscrits dans la même filière que vous pour apparaître ici.
+        {% if total_etudiants_tous > 0 %}
+        <br><strong>Total d'étudiants dans le système :</strong> {{ total_etudiants_tous }}
+        {% endif %}
+    </div>
+    {% elif not filiere %}
+    <div class="alert alert-error">
+        <strong>⚠️ Attention :</strong> Vous n'avez pas de filière assignée. Contactez un administrateur pour vous assigner une filière.
+        {% if total_etudiants_tous > 0 %}
+        <br><strong>Total d'étudiants dans le système :</strong> {{ total_etudiants_tous }}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_etudiants }}</div>
+            <div class="stat-label">Étudiants</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_cours }}</div>
+            <div class="stat-label">Cours</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('notes')">📝 Gérer les Notes</button>
+        <button class="tab" onclick="showTab('absences')">📅 Gérer les Absences</button>
+    </div>
+
+    <!-- Section Notes -->
+    <div id="notes" class="tab-content active">
+        <div class="card">
+            <h2 class="card-title">Ajouter une Note</h2>
+            <form id="noteForm" class="form-section">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="note_etudiant">Étudiant :</label>
+                        <select id="note_etudiant" required>
+                            <option value="">-- Sélectionnez un étudiant --</option>
+                            {% if etudiants %}
+                                {% for etudiant in etudiants %}
+                                <option value="{{ etudiant.id }}">{{ etudiant.nom }} {{ etudiant.prenom }} ({{ etudiant.filiere_nom or 'Sans filière' }})</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>Aucun étudiant dans votre filière</option>
+                            {% endif %}
+                        </select>
+                        {% if total_etudiants == 0 %}
+                        <small style="color: var(--warning-color); display: block; margin-top: 5px;">
+                            ⚠️ Aucun étudiant dans votre filière ({{ filiere.nom if filiere else 'Non assignée' }}).
+                            {% if total_etudiants_tous > 0 %}
+                            <br>Il y a {{ total_etudiants_tous }} étudiant(s) dans le système, mais aucun dans votre filière.
+                            <br>Les étudiants doivent être inscrits dans la même filière que vous pour apparaître ici.
+                            {% endif %}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="note_cours">Matière :</label>
+                        <select id="note_cours" required>
+                            <option value="">-- Sélectionnez une matière --</option>
+                            {% for c in cours %}
+                            <option value="{{ c.id }}">{{ c.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="note_valeur">Note (sur 20) :</label>
+                        <input type="number" id="note_valeur" step="0.01" min="0" max="20" required placeholder="Ex: 15.5">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="note_commentaire">Commentaire :</label>
+                    <textarea id="note_commentaire" rows="3" placeholder="Commentaire sur la note..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Ajouter la Note</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Notes des Étudiants</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="view_etudiant">Voir les notes de :</label>
+                    <select id="view_etudiant" onchange="loadEtudiantNotes()">
+                        <option value="">-- Sélectionnez un étudiant --</option>
+                        {% if etudiants %}
+                            {% for etudiant in etudiants %}
+                            <option value="{{ etudiant.id }}">{{ etudiant.nom }} {{ etudiant.prenom }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>Aucun étudiant dans votre filière</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="view_cours_notes">Filtrer par matière :</label>
+                    <select id="view_cours_notes" onchange="loadEtudiantNotes()">
+                        <option value="">Toutes les matières</option>
+                        {% for c in cours %}
+                        <option value="{{ c.id }}">{{ c.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div id="notesList" class="table-container"></div>
+        </div>
+    </div>
+
+    <!-- Section Absences -->
+    <div id="absences" class="tab-content">
+        <div class="card">
+            <h2 class="card-title">Ajouter une Absence</h2>
+            <form id="absenceForm" class="form-section">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="absence_etudiant">Étudiant :</label>
+                        <select id="absence_etudiant" required>
+                            <option value="">-- Sélectionnez un étudiant --</option>
+                            {% if etudiants %}
+                                {% for etudiant in etudiants %}
+                                <option value="{{ etudiant.id }}">{{ etudiant.nom }} {{ etudiant.prenom }} ({{ etudiant.filiere_nom or 'Sans filière' }})</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>Aucun étudiant dans votre filière</option>
+                            {% endif %}
+                        </select>
+                        {% if total_etudiants == 0 %}
+                        <small style="color: var(--warning-color); display: block; margin-top: 5px;">
+                            ⚠️ Aucun étudiant dans votre filière ({{ filiere.nom if filiere else 'Non assignée' }}).
+                            {% if total_etudiants_tous > 0 %}
+                            <br>Il y a {{ total_etudiants_tous }} étudiant(s) dans le système, mais aucun dans votre filière.
+                            <br>Les étudiants doivent être inscrits dans la même filière que vous pour apparaître ici.
+                            {% endif %}
+                        </small>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label for="absence_cours">Matière :</label>
+                        <select id="absence_cours" required>
+                            <option value="">-- Sélectionnez une matière --</option>
+                            {% for c in cours %}
+                            <option value="{{ c.id }}">{{ c.nom }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="absence_date">Date d'absence :</label>
+                        <input type="date" id="absence_date" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Ajouter l'Absence</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Absences des Étudiants</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="view_etudiant_abs">Voir les absences de :</label>
+                    <select id="view_etudiant_abs" onchange="loadEtudiantAbsences()">
+                        <option value="">-- Sélectionnez un étudiant --</option>
+                        {% if etudiants %}
+                            {% for etudiant in etudiants %}
+                            <option value="{{ etudiant.id }}">{{ etudiant.nom }} {{ etudiant.prenom }}</option>
+                            {% endfor %}
+                        {% else %}
+                            <option value="" disabled>Aucun étudiant dans votre filière</option>
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="view_cours_abs">Filtrer par matière :</label>
+                    <select id="view_cours_abs" onchange="loadEtudiantAbsences()">
+                        <option value="">Toutes les matières</option>
+                        {% for c in cours %}
+                        <option value="{{ c.id }}">{{ c.nom }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div id="absencesList" class="table-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Gestion des onglets
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+
+// Formulaire de note
+document.getElementById('noteForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        id_etudiant: document.getElementById('note_etudiant').value,
+        id_cours: document.getElementById('note_cours').value,
+        id_professeur: {{ prof.id }},
+        valeur: parseFloat(document.getElementById('note_valeur').value),
+        commentaire: document.getElementById('note_commentaire').value
+    };
+
+    try {
+        const response = await fetch('/note/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert('Note ajoutée avec succès !');
+            document.getElementById('noteForm').reset();
+            loadEtudiantNotes();
+        } else {
+            alert('Erreur lors de l\'ajout de la note');
+        }
+    } catch (error) {
+        alert('Erreur de connexion');
+    }
+});
+
+// Formulaire d'absence
+document.getElementById('absenceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+        id_etudiant: document.getElementById('absence_etudiant').value,
+        id_cours: document.getElementById('absence_cours').value,
+        id_professeur: {{ prof.id }},
+        date_absence: document.getElementById('absence_date').value
+    };
+
+    try {
+        const response = await fetch('/absence/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            alert('Absence ajoutée avec succès !');
+            document.getElementById('absenceForm').reset();
+            loadEtudiantAbsences();
+        } else {
+            alert('Erreur lors de l\'ajout de l\'absence');
+        }
+    } catch (error) {
+        alert('Erreur de connexion');
+    }
+});
+
+// Charger les notes d'un étudiant
+async function loadEtudiantNotes() {
+    const idEtudiant = document.getElementById('view_etudiant').value;
+    const idCours = document.getElementById('view_cours_notes').value;
+    const container = document.getElementById('notesList');
+
+    if (!idEtudiant) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Sélectionnez un étudiant pour voir ses notes</p>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/professeur/api/etudiant/${idEtudiant}/notes`);
+        let notes = await response.json();
+
+        if (idCours) {
+            notes = notes.filter(n => n.id_cours == idCours);
+        }
+
+        if (notes.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune note trouvée</p>';
+            return;
+        }
+
+        let html = '<table><thead><tr><th>Matière</th><th>Note</th><th>Commentaire</th></tr></thead><tbody>';
+        notes.forEach(note => {
+            html += `<tr>
+                <td>${note.cours_nom}</td>
+                <td><strong>${note.valeur}/20</strong></td>
+                <td>${note.commentaire || '-'}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p style="color: var(--danger-color);">Erreur de chargement</p>';
+    }
+}
+
+// Charger les absences d'un étudiant
+async function loadEtudiantAbsences() {
+    const idEtudiant = document.getElementById('view_etudiant_abs').value;
+    const idCours = document.getElementById('view_cours_abs').value;
+    const container = document.getElementById('absencesList');
+
+    if (!idEtudiant) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Sélectionnez un étudiant pour voir ses absences</p>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/professeur/api/etudiant/${idEtudiant}/absences`);
+        let absences = await response.json();
+
+        if (idCours) {
+            absences = absences.filter(a => a.id_cours == idCours);
+        }
+
+        if (absences.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune absence trouvée</p>';
+            return;
+        }
+
+        // Calculer le taux d'absence par matière
+        const tauxParMatiere = {};
+        absences.forEach(abs => {
+            if (!tauxParMatiere[abs.cours_nom]) {
+                tauxParMatiere[abs.cours_nom] = { total: 0, cours: abs.cours_nom };
+            }
+            tauxParMatiere[abs.cours_nom].total++;
+        });
+
+        let html = '<table><thead><tr><th>Matière</th><th>Date</th><th>Total Absences</th></tr></thead><tbody>';
+        absences.forEach(absence => {
+            html += `<tr>
+                <td>${absence.cours_nom}</td>
+                <td>${new Date(absence.date_absence).toLocaleDateString('fr-FR')}</td>
+                <td><span class="badge badge-warning">${absence.total_absences}</span></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+
+        // Afficher le taux d'absence par matière
+        html += '<div style="margin-top: 20px;"><h3>Taux d\'absence par matière :</h3>';
+        Object.values(tauxParMatiere).forEach(taux => {
+            html += `<p><strong>${taux.cours}</strong> : ${taux.total} absence(s)</p>`;
+        });
+        html += '</div>';
+
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p style="color: var(--danger-color);">Erreur de chargement</p>';
+    }
+}
+
+// Initialiser la date d'aujourd'hui
+document.getElementById('absence_date').valueAsDate = new Date();
+</script>
+{% endblock %}
+

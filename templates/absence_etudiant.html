@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>Mes Absences</h1>
+
+<ul id="absenceList"></ul>
+
+<script>
+const id_etudiant = {{ id_etudiant | tojson }};
+const absenceList = document.getElementById("absenceList");
+
+async function loadAbsences() {
+    try {
+        const response = await fetch(`/absence/etudiant/${id_etudiant}`);
+        if (!response.ok) throw new Error("Erreur lors du chargement des absences");
+        const absences = await response.json();
+        absenceList.innerHTML = "";
+        if (absences.length === 0) absenceList.innerHTML = "<li>Aucune absence</li>";
+        else {
+            absences.forEach(a => {
+                const li = document.createElement("li");
+                li.textContent = `Cours : ${a.cours} → Date : ${a.date_absence}`;
+                absenceList.appendChild(li);
+            });
+        }
+    } catch (error) {
+        absenceList.innerHTML = `<li>Erreur : ${error.message}</li>`;
+    }
+}
+
+loadAbsences();
+</script>
+{% endblock %}

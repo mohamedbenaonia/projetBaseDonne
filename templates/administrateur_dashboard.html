@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Administrateur{% endblock %}
+
+{% block body %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <h1>👤 Dashboard Administrateur</h1>
+            <p>Vue d'ensemble complète de la plateforme</p>
+        </div>
+        <div class="user-info">
+            <span>{{ session.user_name }}</span>
+            <a href="/auth/logout" class="btn-logout">Déconnexion</a>
+        </div>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ total_etudiants }}</div>
+            <div class="stat-label">Étudiants</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_professeurs }}</div>
+            <div class="stat-label">Professeurs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_cours }}</div>
+            <div class="stat-label">Cours</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_notes }}</div>
+            <div class="stat-label">Notes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ total_absences }}</div>
+            <div class="stat-label">Absences</div>
+        </div>
+    </div>
+
+    <!-- Onglets -->
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('etudiants')">👨‍🎓 Étudiants</button>
+        <button class="tab" onclick="showTab('professeurs')">👨‍🏫 Professeurs</button>
+        <button class="tab" onclick="showTab('cours')">📚 Cours</button>
+        <button class="tab" onclick="showTab('notes')">📝 Notes Récentes</button>
+        <button class="tab" onclick="showTab('absences')">📅 Absences Récentes</button>
+    </div>
+
+    <!-- Section Étudiants -->
+    <div id="etudiants" class="tab-content active">
+        <div class="card">
+            <h2 class="card-title">Liste des Étudiants</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Prénom</th>
+                            <th>Email</th>
+                            <th>Filière ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for etudiant in etudiants %}
+                        <tr>
+                            <td>{{ etudiant.id }}</td>
+                            <td>{{ etudiant.nom }}</td>
+                            <td>{{ etudiant.prenom }}</td>
+                            <td>{{ etudiant.email or '-' }}</td>
+                            <td>{{ etudiant.filiere_id or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Professeurs -->
+    <div id="professeurs" class="tab-content">
+        <div class="card">
+            <h2 class="card-title">Liste des Professeurs</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Prénom</th>
+                            <th>Filière ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for professeur in professeurs %}
+                        <tr>
+                            <td>{{ professeur.id }}</td>
+                            <td>{{ professeur.nom }}</td>
+                            <td>{{ professeur.prenom }}</td>
+                            <td>{{ professeur.filiere_id or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Cours -->
+    <div id="cours" class="tab-content">
+        <div class="card">
+            <h2 class="card-title">Liste des Cours</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Filière ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in cours %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td>{{ c.nom }}</td>
+                            <td>{{ c.filiere_id or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Notes Récentes -->
+    <div id="notes" class="tab-content">
+        <div class="card">
+            <h2 class="card-title">Notes Récentes</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Cours</th>
+                            <th>Note</th>
+                            <th>Commentaire</th>
+                            <th>Professeur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for note in notes_recentes %}
+                        <tr>
+                            <td>{{ note.etudiant_nom }} {{ note.etudiant_prenom }}</td>
+                            <td>{{ note.cours_nom }}</td>
+                            <td>
+                                <span class="badge {% if note.valeur >= 16 %}badge-success{% elif note.valeur >= 12 %}badge-info{% else %}badge-warning{% endif %}">
+                                    {{ note.valeur }}/20
+                                </span>
+                            </td>
+                            <td>{{ note.commentaire or '-' }}</td>
+                            <td>{{ note.prof_nom }} {{ note.prof_prenom }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Absences Récentes -->
+    <div id="absences" class="tab-content">
+        <div class="card">
+            <h2 class="card-title">Absences Récentes</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Étudiant</th>
+                            <th>Cours</th>
+                            <th>Date</th>
+                            <th>Professeur</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for absence in absences_recentes %}
+                        <tr>
+                            <td>{{ absence.etudiant_nom }} {{ absence.etudiant_prenom }}</td>
+                            <td>{{ absence.cours_nom }}</td>
+                            <td>{{ absence.date_absence }}</td>
+                            <td>{{ absence.prof_nom }} {{ absence.prof_prenom }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}
+
