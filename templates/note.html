@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<h1>Mes Notes</h1>
+
+<ul id="noteList"></ul>
+
+<script>
+    const id_etudiant = {{ id_etudiant | tojson }};
+    const noteList = document.getElementById("noteList");
+
+    async function loadNotes() {
+        try {
+            const response = await fetch(`/note/etudiant/${id_etudiant}`);
+            if (!response.ok) throw new Error("Erreur lors du chargement des notes");
+            const notes = await response.json();
+            noteList.innerHTML = "";
+            if (notes.length === 0) noteList.innerHTML = "<li>Aucune note trouvée</li>";
+            else {
+                notes.forEach(n => {
+                    const li = document.createElement("li");
+                    li.textContent = `Cours : ${n.cours} → Note : ${n.valeur}`;
+                    noteList.appendChild(li);
+                });
+            }
+        } catch (error) {
+            noteList.innerHTML = `<li>Erreur : ${error.message}</li>`;
+        }
+    }
+
+    loadNotes();
+</script>
+{% endblock %}

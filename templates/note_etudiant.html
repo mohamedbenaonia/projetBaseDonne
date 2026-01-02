@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block body %}
+<h1>Mes Notes</h1>
+<ul id="noteList"></ul>
+
+<script>
+const id_etudiant = {{ id_etudiant | tojson }};
+const noteList = document.getElementById("noteList");
+
+async function loadNotes() {
+    const response = await fetch(`/note/etudiant/${id_etudiant}`);
+    const notes = await response.json();
+    noteList.innerHTML = "";
+    notes.forEach(n => {
+        const li = document.createElement("li");
+        li.textContent = `Cours : ${n.cours} → Note : ${n.valeur}`;
+        noteList.appendChild(li);
+    });
+}
+
+loadNotes();
+</script>
+{% endblock %}

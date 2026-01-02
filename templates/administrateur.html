@@ -1,50 +1,48 @@
 {% extends 'base.html' %}
 
 {% block body %}
-    <h1>Ajouter un administrateur</h1>
-    <form id="adminForm">
-        <input type="text" id="username" placeholder="Nom d'utilisateur" required>
-        <input type="password" id="password" placeholder="Mot de passe" required>
-        <button type="submit">Ajouter</button>
-    </form>
+<h1>Administrateurs</h1>
+<form id="adminForm">
+    <input type="text" id="username" placeholder="Nom d'utilisateur" required>
+    <input type="password" id="password" placeholder="Mot de passe" required>
+    <button type="submit">Ajouter</button>
+</form>
 
-    <h2>Liste des administrateurs</h2>
-    <ul id="adminList"></ul>
+<h2>Liste des administrateurs</h2>
+<ul id="adminList"></ul>
 
-    <script>
-        const form = document.getElementById("adminForm");
-        const adminList = document.getElementById("adminList");
+<script>
+const form = document.getElementById("adminForm");
+const adminList = document.getElementById("adminList");
 
-        // Ajouter un administrateur
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const username = document.getElementById("username").value;
-            const password = document.getElementById("password").value;
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = document.getElementById("username").value;
+    const password = document.getElementById("password").value;
 
-            const response = await fetch("/administrateurs", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password })
-            });
+    const response = await fetch("/administrateurs/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
 
-            if(response.ok) {
-                alert("Administrateur ajouté !");
-                loadAdmins();
-            }
-        });
-
-        // Charger la liste des administrateurs
-        async function loadAdmins() {
-            const response = await fetch("/administrateurs");
-            const admins = await response.json();
-            adminList.innerHTML = "";
-            admins.forEach(a => {
-                const li = document.createElement("li");
-                li.textContent = `${a.id} - ${a.username}`;
-                adminList.appendChild(li);
-            });
-        }
-
+    if(response.ok) {
+        alert("Administrateur ajouté !");
         loadAdmins();
-    </script>
+    }
+});
+
+async function loadAdmins() {
+    const response = await fetch("/administrateurs/");
+    const admins = await response.json();
+    adminList.innerHTML = "";
+    admins.forEach(a => {
+        const li = document.createElement("li");
+        li.textContent = `${a.id} - ${a.username}`;
+        adminList.appendChild(li);
+    });
+}
+
+loadAdmins();
+</script>
 {% endblock %}

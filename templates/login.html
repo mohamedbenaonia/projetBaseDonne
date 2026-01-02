@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Connexion - Plateforme Universitaire{% endblock %}
+
+{% block body %}
+<div class="login-container">
+    <div class="login-card">
+        <div class="login-header">
+            <h1>🎓 Plateforme Universitaire</h1>
+            <p>Connectez-vous à votre espace</p>
+        </div>
+        
+        <form id="loginForm" class="login-form">
+            <div class="form-group">
+                <label for="user_type">Je suis :</label>
+                <select id="user_type" name="user_type" required>
+                    <option value="">-- Sélectionnez votre rôle --</option>
+                    <option value="etudiant">👨‍🎓 Étudiant</option>
+                    <option value="professeur">👨‍🏫 Professeur</option>
+                    <option value="administrateur">👤 Administrateur</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email / Nom d'utilisateur :</label>
+                <input type="text" id="email" name="email" required placeholder="votre@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Mot de passe :</label>
+                <input type="password" id="password" name="password" required placeholder="••••••••">
+            </div>
+            
+            <button type="submit" class="btn-primary">Se connecter</button>
+        </form>
+        
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+        
+        <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+            <p style="color: var(--text-secondary);">Vous n'avez pas de compte ?</p>
+            <a href="/auth/register" style="color: var(--primary-color); text-decoration: none; font-weight: 600;">Créer un compte</a>
+        </div>
+    </div>
+</div>
+
+<script>
+const form = document.getElementById("loginForm");
+const errorMessage = document.getElementById("errorMessage");
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    errorMessage.style.display = "none";
+    
+    const formData = {
+        user_type: document.getElementById("user_type").value,
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value
+    };
+    
+    try {
+        const response = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(formData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            window.location.href = data.redirect;
+        } else {
+            errorMessage.textContent = data.error || "Erreur de connexion";
+            errorMessage.style.display = "block";
+        }
+    } catch (error) {
+        errorMessage.textContent = "Erreur de connexion au serveur";
+        errorMessage.style.display = "block";
+    }
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block body %}
+<h1>Ajouter des Notes</h1>
+
+<form id="noteForm">
+    <select id="id_etudiant">
+        {% for e in etudiants %}
+            <option value="{{ e.id }}">{{ e.nom }} {{ e.prenom }}</option>
+        {% endfor %}
+    </select>
+    <select id="id_cours">
+        {% for c in cours %}
+            <option value="{{ c.id }}">{{ c.nom }}</option>
+        {% endfor %}
+    </select>
+    <input type="number" step="0.01" id="valeur" placeholder="Note" required>
+    <button type="submit">Ajouter</button>
+</form>
+
+<script>
+const form = document.getElementById("noteForm");
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id_etudiant = document.getElementById("id_etudiant").value;
+    const id_cours = document.getElementById("id_cours").value;
+    const valeur = document.getElementById("valeur").value;
+
+    await fetch("/note/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_etudiant, id_cours, valeur })
+    });
+    alert("Note ajoutée !");
+});
+</script>
+{% endblock %}

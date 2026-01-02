@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Étudiant - {{ etudiant.nom }} {{ etudiant.prenom }}{% endblock %}
+
+{% block body %}
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div>
+            <h1>👨‍🎓 Dashboard Étudiant</h1>
+            <p>Bienvenue, {{ etudiant.nom }} {{ etudiant.prenom }}</p>
+        </div>
+        <div class="user-info">
+            <span>{{ session.user_name }}</span>
+            <a href="/auth/logout" class="btn-logout">Déconnexion</a>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="card-title">Sélectionnez une Matière</h2>
+        <div class="form-group">
+            <label for="select_cours">Choisir une matière :</label>
+            <select id="select_cours" onchange="loadCoursData()" style="width: 100%;">
+                <option value="">-- Sélectionnez une matière --</option>
+                {% for c in cours %}
+                <option value="{{ c.id }}">{{ c.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div id="coursContent" style="display: none;">
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('notes')">📝 Mes Notes</button>
+            <button class="tab" onclick="showTab('absences')">📅 Mes Absences</button>
+        </div>
+
+        <!-- Section Notes -->
+        <div id="notes" class="tab-content active">
+            <div class="card">
+                <h2 class="card-title">Notes et Commentaires</h2>
+                <div id="notesList" class="table-container"></div>
+            </div>
+        </div>
+
+        <!-- Section Absences -->
+        <div id="absences" class="tab-content">
+            <div class="card">
+                <h2 class="card-title">Absences et Taux d'Absence</h2>
+                <div id="absencesList" class="table-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentCoursId = null;
+
+// Gestion des onglets
+function showTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+    
+    if (currentCoursId) {
+        if (tabName === 'notes') {
+            loadNotes();
+        } else {
+            loadAbsences();
+        }
+    }
+}
+
+// Charger les données de la matière sélectionnée
+function loadCoursData() {
+    currentCoursId = document.getElementById('select_cours').value;
+    const content = document.getElementById('coursContent');
+    
+    if (!currentCoursId) {
+        content.style.display = 'none';
+        return;
+    }
+    
+    content.style.display = 'block';
+    loadNotes();
+    loadAbsences();
+}
+
+// Charger les notes
+async function loadNotes() {
+    if (!currentCoursId) return;
+    
+    const container = document.getElementById('notesList');
+    container.innerHTML = '<div class="spinner"></div>';
+    
+    try {
+        const response = await fetch(`/etudiant/api/notes/${currentCoursId}`);
+        const notes = await response.json();
+        
+        if (notes.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune note disponible pour cette matière</p>';
+            return;
+        }
+        
+        let html = '<table><thead><tr><th>Note</th><th>Commentaire du Professeur</th><th>Professeur</th></tr></thead><tbody>';
+        notes.forEach(note => {
+            const badgeClass = note.valeur >= 16 ? 'badge-success' : note.valeur >= 12 ? 'badge-info' : 'badge-warning';
+            html += `<tr>
+                <td><span class="badge ${badgeClass}" style="font-size: 1.2rem; padding: 8px 15px;">${note.valeur}/20</span></td>
+                <td>${note.commentaire || '<em style="color: var(--text-secondary);">Aucun commentaire</em>'}</td>
+                <td>${note.prof_nom} ${note.prof_prenom}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        
+        // Calculer la moyenne
+        const moyenne = notes.reduce((sum, n) => sum + n.valeur, 0) / notes.length;
+        html += `<div style="margin-top: 20px; padding: 15px; background: var(--bg-color); border-radius: 10px;">
+            <strong>Moyenne : ${moyenne.toFixed(2)}/20</strong>
+        </div>`;
+        
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p style="color: var(--danger-color);">Erreur de chargement des notes</p>';
+    }
+}
+
+// Charger les absences
+async function loadAbsences() {
+    if (!currentCoursId) return;
+    
+    const container = document.getElementById('absencesList');
+    container.innerHTML = '<div class="spinner"></div>';
+    
+    try {
+        const response = await fetch(`/etudiant/api/absences/${currentCoursId}`);
+        const absences = await response.json();
+        
+        if (absences.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary);">Aucune absence enregistrée pour cette matière</p>';
+            return;
+        }
+        
+        // Grouper par matière et calculer le taux
+        const matiereInfo = {};
+        absences.forEach(abs => {
+            if (!matiereInfo[abs.cours_nom]) {
+                matiereInfo[abs.cours_nom] = {
+                    nom: abs.cours_nom,
+                    absences: [],
+                    total: 0
+                };
+            }
+            matiereInfo[abs.cours_nom].absences.push(abs);
+            matiereInfo[abs.cours_nom].total = abs.total_absences;
+        });
+        
+        let html = '<table><thead><tr><th>Date d\'Absence</th><th>Professeur</th></tr></thead><tbody>';
+        absences.forEach(absence => {
+            html += `<tr>
+                <td>${new Date(absence.date_absence).toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+                <td>${absence.prof_nom} ${absence.prof_prenom}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        
+        // Afficher le taux d'absence
+        Object.values(matiereInfo).forEach(info => {
+            const tauxClass = info.total > 5 ? 'badge-danger' : info.total > 3 ? 'badge-warning' : 'badge-info';
+            html += `<div style="margin-top: 20px; padding: 15px; background: var(--bg-color); border-radius: 10px;">
+                <h3>${info.nom}</h3>
+                <p><strong>Total d'absences :</strong> <span class="badge ${tauxClass}">${info.total}</span></p>
+            </div>`;
+        });
+        
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p style="color: var(--danger-color);">Erreur de chargement des absences</p>';
+    }
+}
+</script>
+{% endblock %}
+
