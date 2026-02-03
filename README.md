@@ -155,5 +155,5 @@ La plateforme utilise un design moderne avec :
 
 ## 📝 Licence
 
-Ce projet est un projet éducatif.
+Ce projet est un projet éducatif
 
